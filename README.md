@@ -45,8 +45,19 @@ You do not need our provided installer to run this natively. Anyone can compile 
    *(Note: The first time you run the app, it will download the ~480MB Whisper model `ggml-small.en.bin` to `~/.voice-type/models/`).*
 
 ### Permissions (Crucial Step)
-Because Voice Type relies on listening to global keyboard events and injecting text, macOS will block it by default. 
-When you run the binary, go to **System Settings > Privacy & Security** and manually grant **Accessibility** and **Microphone** permissions to your Terminal application (or the native binary if running as a background service). 
+Because Voice Type relies on listening to global keyboard events and injecting text natively, macOS will block it by default due to strict security policies.
+
+When you run the binary (or the `LaunchAgent` background service), you **must** manually grant permissions:
+1. Open **System Settings > Privacy & Security**.
+2. Go to **Accessibility** and ensure the toggle for your Terminal (e.g., `iTerm2` or `Terminal`) OR the native binary (`~/.voice-type/voice_type_rs`) is switched **ON**.
+3. Go to **Input Monitoring** and do the **exact same thing**.
+4. Go to **Microphone** and ensure it has recording access.
+
+> **💡 Troubleshooting Stale Permissions**: If you compiled a *new* Rust binary or ran the `install.sh` sequence, macOS will silently block the new executable even if the toggle looks checked. If your hotkey isn't responding:
+> 1. Select the `voice_type_rs` entry in Accessibility/Input Monitoring and click the **minus (`-`) button** to delete it.
+> 2. Click the **plus (`+`) button**.
+> 3. Press `Cmd + Shift + G` to open the "Go to Folder" window, paste `~/.voice-type`, and select the `voice_type_rs` executable.
+> 4. Ensure the toggles are ON, and restart the background daemon.
 
 ### Auto-Start Service (LaunchAgent)
 If you'd like to run it silently in the background on startup, you can use the `install.sh` script included in the root directory, which will compile the binary, move it to `~/.voice-type/`, and enroll a `.plist` daemon in `~/Library/LaunchAgents`.
