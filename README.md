@@ -24,7 +24,7 @@ You do not need our provided installer to run this natively. Anyone can compile 
 
 1. Clone the repository and navigate to the Rust project:
    ```bash
-   git clone https://github.com/your-username/VoiceType.git
+   git clone https://github.com/7empest462/VoiceType.git
    cd VoiceType/voice_type_rs
    ```
 
