@@ -1,0 +1,5 @@
+.DS_Store
+voice_type_rs/target/
+voice_type_venv/
+ai_consultant.py
+ai_helpers.sh
