@@ -22,13 +22,13 @@ install_linux_deps() {
     echo "📦 Detected Linux. Installing system dependencies..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake libasound2-dev libx11-dev libxtst-dev libxdo-dev libgtk-3-dev libayatana-appindicator3-dev
+        sudo apt-get install -y build-essential cmake pkg-config libasound2-dev libx11-dev libxtst-dev libxdo-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev libayatana-appindicator3-dev libdbus-1-dev
     elif command -v dnf &> /dev/null; then
-        sudo dnf install -y gcc-c++ cmake alsa-lib-devel libX11-devel libXtst-devel libxdo-devel gtk3-devel libappindicator-gtk3-devel
+        sudo dnf install -y gcc-c++ cmake pkgconf-pkg-config alsa-lib-devel libX11-devel libXtst-devel libxdo-devel libxcb-devel libxkbcommon-devel gtk3-devel libappindicator-gtk3-devel dbus-devel
     elif command -v pacman &> /dev/null; then
-        sudo pacman -S --needed base-devel cmake alsa-lib libx11 libxtst libxdo gtk3 libappindicator-gtk3
+        sudo pacman -S --needed base-devel cmake pkgconf alsa-lib libx11 libxtst libxdo libxcb libxkbcommon gtk3 libappindicator-gtk3 dbus
     else
-        echo "❌ Unsupported package manager. Please install dependencies manually: build-essential, cmake, alsa-lib, x11, xtst, xdo, gtk3, appindicator3."
+        echo "❌ Unsupported package manager. Please install dependencies manually: build-essential, cmake, pkg-config, alsa-lib, x11, xtst, xdo, xcb, xkbcommon, gtk3, appindicator3, dbus."
         exit 1
     fi
 }
