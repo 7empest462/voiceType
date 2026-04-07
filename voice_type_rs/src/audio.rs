@@ -32,7 +32,7 @@ impl AudioRecorder {
         
         let stream_config: StreamConfig = config.clone().into();
         
-        println!("🎤 Using audio device: {:?}", device.name().unwrap_or_else(|_| "Unknown".to_string()));
+        println!("🎤 Using audio device: {:?}", host.default_input_device().and_then(|d| d.name().ok()).unwrap_or_else(|| "Unknown".to_string()));
         println!("📊 Format: {:?}, Rate: {}Hz, Channels: {}", sample_format, self.sample_rate, self.channels);
 
         // Ensure buffer is empty
