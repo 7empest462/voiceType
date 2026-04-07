@@ -22,13 +22,35 @@ install_linux_deps() {
     echo "📦 Detected Linux. Installing system dependencies..."
     if command -v apt-get &> /dev/null; then
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake pkg-config libasound2-dev libx11-dev libxtst-dev libxdo-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev libayatana-appindicator3-dev libdbus-1-dev
+        sudo apt-get install -y build-essential cmake pkg-config libasound2-dev libx11-dev libxtst-dev libxdo-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libgtk-3-dev libayatana-appindicator3-dev \
+            libdbus-1-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libx11-xcb-dev
     elif command -v dnf &> /dev/null; then
-        sudo dnf install -y gcc-c++ cmake pkgconf-pkg-config alsa-lib-devel libX11-devel libXtst-devel libxdo-devel libxcb-devel libxkbcommon-devel gtk3-devel libappindicator-gtk3-devel dbus-devel
+        sudo dnf install -y gcc-c++ cmake pkgconf-pkg-config alsa-lib-devel libX11-devel libXtst-devel libxdo-devel \
+            libxcb-devel libxkbcommon-devel gtk3-devel libappindicator-gtk3-devel dbus-devel \
+            libXcursor-devel libXinerama-devel libXi-devel libXrandr-devel
     elif command -v pacman &> /dev/null; then
-        sudo pacman -S --needed base-devel cmake pkgconf alsa-lib libx11 libxtst libxdo libxcb libxkbcommon gtk3 libappindicator-gtk3 dbus
+        sudo pacman -S --needed base-devel cmake pkgconf alsa-lib libx11 libxtst libxdo libxcb libxkbcommon \
+            gtk3 libappindicator-gtk3 dbus libxcursor libxinerama libxi libxrandr
     else
-        echo "❌ Unsupported package manager. Please install dependencies manually: build-essential, cmake, pkg-config, alsa-lib, x11, xtst, xdo, xcb, xkbcommon, gtk3, appindicator3, dbus."
+        echo "❌ Unsupported package manager. Please install dependencies manually."
+        exit 1
+    fi
+}
+
+check_linux_libs() {
+    echo "🔍 Checking for required libraries via pkg-config..."
+    REQS=("x11" "xtst" "xdo" "gtk+-3.0" "ayatana-appindicator3-0")
+    for req in "${REQS[@]}"; do
+        if ! pkg-config --exists "$req"; then
+            echo "❌ Missing dependency: $req"
+            MISSING=1
+        else
+            echo "✓ Found: $req ($(pkg-config --modversion $req))"
+        fi
+    done
+    if [ "$MISSING" == "1" ]; then
+        echo "❌ Some dependencies are still missing. Please check the install log above."
         exit 1
     fi
 }
@@ -64,6 +86,11 @@ if ! command -v cargo &> /dev/null; then
     source "$HOME/.cargo/env"
 fi
 echo "✓ Rust (cargo) found"
+
+# 3.5 Check Linux Libs
+if [ "$OS_TYPE" == "Linux" ]; then
+    check_linux_libs
+fi
 
 # 4. Build the Rust Project
 echo ""
