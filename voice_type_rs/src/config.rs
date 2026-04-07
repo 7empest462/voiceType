@@ -13,7 +13,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             hotkey: "AltGr".to_string(),
-            model: "qwen2.5-coder:7b".to_string(),
+            model: "qwen2.5-coder:3b".to_string(),
         }
     }
 }

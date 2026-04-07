@@ -7,7 +7,7 @@ This repository features the native Rust rewrite, offering **virtually zero CPU 
 ## Features
 * 🎙️ **Push-to-Talk**: Hold down **Right Option (⌥)** on macOS or **AltGr** on Linux to record anywhere. Let go, and the text is automatically typed at your cursor.
 * ⚡ **Ultra-Fast & Local**: Uses `whisper-rs` (a wrapper around `whisper.cpp`) to transcribe audio locally on your machine in milliseconds.
-* 🧠 **AI Grammar Cleanup**: Automatically pipes the raw transcription through a local Ollama instance (`qwen2.5-coder:7b`) to fix grammar, punctuation, and speech-to-text hallucinations.
+* 🧠 **AI Grammar Cleanup**: Automatically pipes the raw transcription through a local Ollama instance (`qwen2.5-coder:3b`) to fix grammar, punctuation, and speech-to-text hallucinations.
 * 📝 **Meeting Memos**: A secondary mode to summarize long recordings into clear Markdown bullet points and action items.
 * 🔔 **Native System Integration**: Cross-platform system sounds and system-native menu bar/system tray icon.
 
@@ -43,7 +43,7 @@ Example `config.json`:
 ```json
 {
   "hotkey": "AltGr",
-  "model": "qwen2.5-coder:7b"
+  "model": "qwen2.5-coder:3b"
 }
 ```
 

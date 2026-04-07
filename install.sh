@@ -187,8 +187,8 @@ fi
 
 # 7. Pull Ollama model
 echo ""
-echo "🧠 Pulling Ollama model (qwen2.5-coder:7b)..."
-ollama pull qwen2.5-coder:7b || echo "⚠️  Could not pull model automatically. Ensure Ollama is running."
+echo "🧠 Pulling Ollama model (qwen2.5-coder:3b)..."
+ollama pull qwen2.5-coder:3b || echo "⚠️  Could not pull model automatically. Ensure Ollama is running."
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
