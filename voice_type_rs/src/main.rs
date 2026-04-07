@@ -97,7 +97,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut audio_recorder = audio::AudioRecorder::new();
 
-    let _tray_icon = {
+    #[cfg_attr(target_os = "linux", allow(unused))]
+    let tray_icon = {
         let builder = TrayIconBuilder::new()
             .with_menu(Box::new(tray_menu))
             .with_tooltip("Voice Type")
