@@ -43,18 +43,33 @@ install_linux_deps() {
 
 check_linux_libs() {
     echo "🔍 Checking for required libraries via pkg-config..."
-    # Note: Use ayatana-appindicator3-0.1 as it is the standard pkg-config name
-    REQS=("x11" "xtst" "xdo" "gtk+-3.0" "ayatana-appindicator3-0.1")
+    # Force common Linux paths just in case the environment is clean
+    export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
+    
+    MISSING=0
+    # Use ayatana-appindicator3-0.1 or appindicator3-0.1 as fallbacks
+    REQS=("x11" "xtst" "xdo" "gtk+-3.0")
+    
+    # Check core X11/GTK first
     for req in "${REQS[@]}"; do
-        if ! pkg-config --exists "$req"; then
+        if ! pkg-config --print-errors --exists "$req"; then
             echo "❌ Missing dependency: $req"
             MISSING=1
         else
             echo "✓ Found: $req ($(pkg-config --modversion $req))"
         fi
     done
+
+    # Check AppIndicator separately with fallbacks
+    if ! pkg-config --exists "ayatana-appindicator3-0.1" && ! pkg-config --exists "appindicator3-0.1"; then
+        echo "❌ Missing dependency: ayatana-appindicator3-0.1 (or appindicator3-0.1)"
+        MISSING=1
+    else
+        echo "✓ Found: AppIndicator"
+    fi
+
     if [ "$MISSING" == "1" ]; then
-        echo "❌ Some dependencies are still missing. Please check the install log above."
+        echo "❌ Some dependencies are still missing. Please check the error messages above."
         exit 1
     fi
 }
