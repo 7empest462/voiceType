@@ -36,6 +36,23 @@ You can use the provided `install.sh` script to handle dependencies and setup au
    - **macOS**: Grant **Accessibility**, **Input Monitoring**, and **Microphone** permissions to the binary (`~/.voice-type/voice_type_rs`) in System Settings.
    - **Linux (X11)**: Ensure your user is part of the `input` group if using low-level hotkeys (e.g., `sudo usermod -aG input $USER`). Note that hotkeys work best on X11; Wayland support may require additional configuration.
 
+### Configuration (Customizing Hotkeys)
+The first time you run Voice Type, it will create a default configuration file at `~/.voice-type/config.json`. You can edit this file to change your Push-to-Talk hotkey or the AI model used for cleanup.
+
+Example `config.json`:
+```json
+{
+  "hotkey": "AltGr",
+  "model": "qwen2.5-coder:7b"
+}
+```
+
+Supported Hotkeys:
+-   `AltGr` (Standard for Right Option/Right Alt)
+-   `CapsLock`, `ControlLeft`, `ControlRight`, `ShiftLeft`, `ShiftRight`, `MetaLeft` (Cmd/Win)
+-   `F1` through `F12`
+-   `Space`, `Tab`
+
 ### Manual Compilation:
 ```bash
 cd voice_type_rs

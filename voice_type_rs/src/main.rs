@@ -3,6 +3,9 @@ mod hotkey;
 mod keyboard;
 mod ollama;
 mod transcription;
+mod config;
+
+use config::Config;
 
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
 use tao::event::Event;
@@ -62,6 +65,10 @@ fn main() -> anyhow::Result<()> {
         .enable_all()
         .build()?;
 
+    // Initialize config
+    let config = Config::load();
+    let target_key = config.get_target_key();
+
     // Initialize transcriber (downloads model if missing)
     println!("Loading Whisper model...");
     let mut transcriber = rt.block_on(transcription::Transcriber::new())?;
@@ -72,7 +79,7 @@ fn main() -> anyhow::Result<()> {
     let proxy = event_loop.create_proxy();
 
     // Start the global hotkey listener
-    hotkey::start_listener(proxy.clone());
+    hotkey::start_listener(proxy.clone(), target_key);
 
     // Create the tray menu
     let tray_menu = Menu::new();
@@ -182,7 +189,7 @@ fn main() -> anyhow::Result<()> {
                                             println!("Raw Memo Transcription: {}", text);
                                             #[cfg(target_os = "macos")]
                                             tray_icon.set_title(Some("🧠"));
-                                            match rt.block_on(ollama::summarize_memo(&text)) {
+                                            match rt.block_on(ollama::summarize_memo(&text, &config.model)) {
                                                 Ok(summary) => {
                                                     println!("Memo Summary: {}", summary);
                                                     
@@ -203,7 +210,7 @@ fn main() -> anyhow::Result<()> {
                                             }
                                         } else {
                                             println!("Raw Transcription: {}", text);
-                                            match rt.block_on(ollama::cleanup_text(&text)) {
+                                            match rt.block_on(ollama::cleanup_text(&text, &config.model)) {
                                                 Ok(cleaned) => {
                                                     println!("Cleaned Text: {}", cleaned);
                                                     if let Err(e) = keyboard::type_text(&cleaned) {

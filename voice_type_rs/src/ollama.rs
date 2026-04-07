@@ -19,7 +19,7 @@ struct OllamaResponse {
     response: String,
 }
 
-pub async fn cleanup_text(raw_text: &str) -> anyhow::Result<String> {
+pub async fn cleanup_text(raw_text: &str, model: &str) -> anyhow::Result<String> {
     let prompt = format!(
         "Clean up this voice transcription. Fix grammar and punctuation.\n\
         - Convert \"comma\" and \"period\" to punctuation\n\
@@ -32,7 +32,7 @@ pub async fn cleanup_text(raw_text: &str) -> anyhow::Result<String> {
 
     let client = reqwest::Client::new();
     let req_body = OllamaRequest {
-        model: "qwen2.5-coder:7b",
+        model,
         prompt,
         stream: false,
         options: OllamaOptions {
@@ -55,7 +55,7 @@ pub async fn cleanup_text(raw_text: &str) -> anyhow::Result<String> {
     }
 }
 
-pub async fn summarize_memo(raw_text: &str) -> anyhow::Result<String> {
+pub async fn summarize_memo(raw_text: &str, model: &str) -> anyhow::Result<String> {
     let prompt = format!(
         "Summarize this meeting transcript into clear bullet points and action items.\n\
         Transcript:\n\
@@ -66,7 +66,7 @@ pub async fn summarize_memo(raw_text: &str) -> anyhow::Result<String> {
 
     let client = reqwest::Client::new();
     let req_body = OllamaRequest {
-        model: "qwen2.5-coder:7b",
+        model,
         prompt,
         stream: false,
         options: OllamaOptions {
