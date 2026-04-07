@@ -177,6 +177,12 @@ EOF
     echo "🚀 Starting Voice Type..."
     nohup "$INSTALL_DIR/voice_type_rs" > /tmp/voice-type.log 2> /tmp/voice-type.err &
     echo "✓ Setup Linux auto-start (.desktop file)"
+
+    # Create Desktop shortcut for Linux
+    DESKTOP_HOME_FILE="$HOME/Desktop/voice-type.desktop"
+    cp "$DESKTOP_FILE" "$DESKTOP_HOME_FILE"
+    chmod +x "$DESKTOP_HOME_FILE"
+    echo "✓ Created Linux desktop shortcut"
 fi
 
 # 7. Pull Ollama model
