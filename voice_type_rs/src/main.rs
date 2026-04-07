@@ -18,10 +18,10 @@ pub enum AppEvent {
     StopRecording,
 }
 
-fn play_sound(name: &str) {
+fn play_sound(_name: &str) {
     #[cfg(target_os = "macos")]
     {
-        let sound_path = match name {
+        let sound_path = match _name {
             "Tink" => "/System/Library/Sounds/Tink.aiff",
             "Pop" => "/System/Library/Sounds/Pop.aiff",
             _ => "/System/Library/Sounds/Glass.aiff",
@@ -97,16 +97,14 @@ fn main() -> anyhow::Result<()> {
 
     let mut audio_recorder = audio::AudioRecorder::new();
 
-    let tray_icon = {
-        let mut builder = TrayIconBuilder::new()
+    let _tray_icon = {
+        let builder = TrayIconBuilder::new()
             .with_menu(Box::new(tray_menu))
             .with_tooltip("Voice Type")
             .with_icon(icon);
             
         #[cfg(target_os = "macos")]
-        {
-            builder = builder.with_title("🎙️");
-        }
+        let builder = builder.with_title("🎙️");
         
         builder.build().unwrap()
     };

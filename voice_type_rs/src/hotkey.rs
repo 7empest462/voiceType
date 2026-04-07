@@ -1,4 +1,4 @@
-use rdev::{listen, Event, EventType, Key};
+use rdev::{listen, Event, EventType};
 use crate::AppEvent;
 
 pub fn start_listener(proxy: tao::event_loop::EventLoopProxy<AppEvent>, target_key: rdev::Key) {
