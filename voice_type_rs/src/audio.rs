@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{SampleFormat, StreamConfig};
+use cpal::{Sample, SampleFormat, StreamConfig};
 use std::sync::{Arc, Mutex};
 
 pub struct AudioRecorder {
@@ -25,19 +25,15 @@ impl AudioRecorder {
             .default_input_device()
             .ok_or_else(|| anyhow::anyhow!("No input device available"))?;
 
-        let mut supported_configs = device.supported_input_configs()?;
-        let supported_config = supported_configs
-            .find(|c| c.sample_format() == SampleFormat::F32)
-            .ok_or_else(|| anyhow::anyhow!("No F32 supported input config"))?;
-            
-        // We just use the max sample rate of the config (usually the only one like 44100 or 48000)
-        let sample_rate = supported_config.max_sample_rate();
-        let config = supported_config.with_sample_rate(sample_rate);
-        
-        self.sample_rate = sample_rate;
+        let config = device.default_input_config()?;
+        let sample_format = config.sample_format();
+        self.sample_rate = config.sample_rate().into();
         self.channels = config.channels();
-
-        let config: StreamConfig = config.into();
+        
+        let stream_config: StreamConfig = config.clone().into();
+        
+        println!("🎤 Using audio device: {:?}", device.name().unwrap_or_else(|_| "Unknown".to_string()));
+        println!("📊 Format: {:?}, Rate: {}Hz, Channels: {}", sample_format, self.sample_rate, self.channels);
 
         // Ensure buffer is empty
         {
@@ -46,18 +42,47 @@ impl AudioRecorder {
         }
 
         let buffer_clone = Arc::clone(&self.buffer);
-
-        let stream = device.build_input_stream(
-            &config,
-            move |data: &[f32], _: &_| {
-                let mut buf = buffer_clone.lock().unwrap();
-                buf.extend_from_slice(data);
+        
+        let stream = match sample_format {
+            SampleFormat::F32 => {
+                device.build_input_stream(
+                    &stream_config,
+                    move |data: &[f32], _: &_| {
+                        let mut buf = buffer_clone.lock().unwrap();
+                        buf.extend_from_slice(data);
+                    },
+                    |err| eprintln!("Audio stream error: {}", err),
+                    None
+                )?
             },
-            move |err| {
-                eprintln!("Audio input stream error: {}", err);
+            SampleFormat::I16 => {
+                device.build_input_stream(
+                    &stream_config,
+                    move |data: &[i16], _: &_| {
+                        let mut buf = buffer_clone.lock().unwrap();
+                        for &sample in data {
+                            buf.push(sample.to_sample::<f32>());
+                        }
+                    },
+                    |err| eprintln!("Audio stream error: {}", err),
+                    None
+                )?
             },
-            None,
-        )?;
+            SampleFormat::U16 => {
+                device.build_input_stream(
+                    &stream_config,
+                    move |data: &[u16], _: &_| {
+                        let mut buf = buffer_clone.lock().unwrap();
+                        for &sample in data {
+                            buf.push(sample.to_sample::<f32>());
+                        }
+                    },
+                    |err| eprintln!("Audio stream error: {}", err),
+                    None
+                )?
+            },
+            _ => return Err(anyhow::anyhow!("Unsupported sample format: {:?}", sample_format)),
+        };
 
         stream.play()?;
         self.stream = Some(stream);
@@ -71,16 +96,39 @@ impl AudioRecorder {
         let raw_data = buf.clone();
         buf.clear();
         
+        if raw_data.is_empty() {
+            return Vec::new();
+        }
+
         // 1. Downmix to Mono
-        let mut mono_data = Vec::with_capacity(raw_data.len() / self.channels as usize);
-        for chunk in raw_data.chunks_exact(self.channels as usize) {
-            let sum: f32 = chunk.iter().sum();
-            mono_data.push(sum / self.channels as f32);
+        let mut mono_data = if self.channels > 1 {
+            let mut data = Vec::with_capacity(raw_data.len() / self.channels as usize);
+            for chunk in raw_data.chunks_exact(self.channels as usize) {
+                let sum: f32 = chunk.iter().sum();
+                data.push(sum / self.channels as f32);
+            }
+            data
+        } else {
+            raw_data
+        };
+        
+        // 2. Simple Normalization & DC Offset removal (prevention of "audio explosions")
+        let mean: f32 = mono_data.iter().sum::<f32>() / mono_data.len() as f32;
+        for s in &mut mono_data {
+            *s -= mean;
         }
         
-        // 2. Resample to 16000 Hz using basic linear interpolation
+        // Find peak for normalization
+        let max_abs = mono_data.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+        if max_abs > 0.0 {
+            let multiplier = 0.9 / max_abs;
+            for s in &mut mono_data {
+                *s *= multiplier;
+            }
+        }
+        
+        // 3. Resample to 16000 Hz using linear interpolation
         let target_rate = 16000.0;
-        // If we happen to be close enough, just return it
         if (self.sample_rate as f32 - target_rate).abs() < 10.0 {
             return mono_data;
         }
