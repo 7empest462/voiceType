@@ -15,6 +15,47 @@ pub enum AppEvent {
     StopRecording,
 }
 
+fn play_sound(name: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        let sound_path = match name {
+            "Tink" => "/System/Library/Sounds/Tink.aiff",
+            "Pop" => "/System/Library/Sounds/Pop.aiff",
+            _ => "/System/Library/Sounds/Glass.aiff",
+        };
+        let _ = std::process::Command::new("afplay")
+            .arg(sound_path)
+            .spawn();
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try common Linux sound players and system sounds
+        let sound_path = "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga";
+        let players = ["pw-play", "paplay", "aplay"];
+        for player in players {
+            if std::process::Command::new(player)
+                .arg(sound_path)
+                .spawn()
+                .is_ok()
+            {
+                break;
+            }
+        }
+    }
+}
+
+fn open_file(path: &std::path::Path) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(path).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(path).spawn();
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     // Create async runtime
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -49,13 +90,19 @@ fn main() -> anyhow::Result<()> {
 
     let mut audio_recorder = audio::AudioRecorder::new();
 
-    let tray_icon = TrayIconBuilder::new()
-        .with_menu(Box::new(tray_menu))
-        .with_tooltip("Voice Type")
-        .with_title("🎙️")
-        .with_icon(icon)
-        .build()
-        .unwrap();
+    let tray_icon = {
+        let mut builder = TrayIconBuilder::new()
+            .with_menu(Box::new(tray_menu))
+            .with_tooltip("Voice Type")
+            .with_icon(icon);
+            
+        #[cfg(target_os = "macos")]
+        {
+            builder = builder.with_title("🎙️");
+        }
+        
+        builder.build().unwrap()
+    };
 
     let menu_channel = tray_icon::menu::MenuEvent::receiver();
 
@@ -95,10 +142,12 @@ fn main() -> anyhow::Result<()> {
                             is_memo = memo;
                             
                             if is_memo {
+                                #[cfg(target_os = "macos")]
                                 tray_icon.set_title(Some("📝"));
                                 memo_i.set_text("Stop Meeting Memo");
                                 println!("📝 Starting Meeting Memo...");
                             } else {
+                                #[cfg(target_os = "macos")]
                                 tray_icon.set_title(Some("🔴"));
                                 record_i.set_text("Stop Recording");
                                 println!("🎤 Starting recording...");
@@ -107,16 +156,14 @@ fn main() -> anyhow::Result<()> {
                             if let Err(e) = audio_recorder.start_recording() {
                                 eprintln!("Failed to start recording: {}", e);
                             } else {
-                                // Play standard macOS "Tink" sound
-                                let _ = std::process::Command::new("afplay")
-                                    .arg("/System/Library/Sounds/Tink.aiff")
-                                    .spawn();
+                                play_sound("Tink");
                             }
                         }
                     }
                     AppEvent::StopRecording => {
                         if is_recording {
                             is_recording = false;
+                            #[cfg(target_os = "macos")]
                             tray_icon.set_title(Some("🎙️"));
                             record_i.set_text("Start Recording");
                             memo_i.set_text("Start Meeting Memo");
@@ -124,17 +171,16 @@ fn main() -> anyhow::Result<()> {
                             let audio_data = audio_recorder.stop_recording();
                             println!("⏹️ Stopped recording. Captured {} samples.", audio_data.len());
                             
-                            // Play standard macOS "Pop" sound
-                            let _ = std::process::Command::new("afplay")
-                                .arg("/System/Library/Sounds/Pop.aiff")
-                                .spawn();
+                            play_sound("Pop");
                             
+                            #[cfg(target_os = "macos")]
                             tray_icon.set_title(Some("⏳"));
                             if audio_data.len() > 16000 { // at least 1 second
                                 match transcriber.transcribe(&audio_data) {
                                     Ok(text) => {
                                         if is_memo {
                                             println!("Raw Memo Transcription: {}", text);
+                                            #[cfg(target_os = "macos")]
                                             tray_icon.set_title(Some("🧠"));
                                             match rt.block_on(ollama::summarize_memo(&text)) {
                                                 Ok(summary) => {
@@ -150,7 +196,7 @@ fn main() -> anyhow::Result<()> {
                                                     let content = format!("# Meeting Memo - {}\n\n{}\n\n---\n### Raw Transcript\n\n{}", ts, summary, text);
                                                     if std::fs::write(&filepath, content).is_ok() {
                                                         println!("Memo saved to {:?}", filepath);
-                                                        let _ = std::process::Command::new("open").arg(&filepath).spawn();
+                                                        open_file(&filepath);
                                                     }
                                                 }
                                                 Err(e) => eprintln!("Ollama memo failed: {}", e),
@@ -178,6 +224,7 @@ fn main() -> anyhow::Result<()> {
                             } else {
                                 println!("Audio too short.");
                             }
+                            #[cfg(target_os = "macos")]
                             tray_icon.set_title(Some("🎙️"));
                         }
                     }

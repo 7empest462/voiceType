@@ -1,12 +1,12 @@
 #!/bin/bash
-# Voice Type Installer (Rust Native Version)
-# Installs Voice Type - a local voice-to-text app for macOS
-# Requirements: macOS with Apple Silicon, Homebrew
+# Voice Type Installer (Cross-platform Rust Native Version)
+# Installs Voice Type - a local voice-to-text app for macOS and Linux
+# Requirements: macOS with Apple Silicon or Linux with GTK3/X11/ALSA
 
 set -e
 
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║           Voice Type Installer for macOS                  ║"
+echo "║           Voice Type Installer (Cross-platform)           ║"
 echo "║     Local AI Voice-to-Text with Push-to-Talk (Native)     ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
@@ -15,22 +15,47 @@ echo ""
 INSTALL_DIR="$HOME/.voice-type"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 RUST_PROJ_DIR="$SCRIPT_DIR/voice_type_rs"
-PLIST_PATH="$HOME/Library/LaunchAgents/com.user.voice-type.plist"
 
-# 1. Check for Homebrew
-if ! command -v brew &> /dev/null; then
-    echo "❌ Homebrew not found. Please install Homebrew first:"
-    echo "   /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+OS_TYPE=$(uname -s)
+
+install_linux_deps() {
+    echo "📦 Detected Linux. Installing system dependencies..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libasound2-dev libx11-dev libxtst-dev libxdo-dev libgtk-3-dev libayatana-appindicator3-dev
+    elif command -v dnf &> /dev/null; then
+        sudo dnf install -y gcc-c++ cmake alsa-lib-devel libX11-devel libXtst-devel libxdo-devel gtk3-devel libappindicator-gtk3-devel
+    elif command -v pacman &> /dev/null; then
+        sudo pacman -S --needed base-devel cmake alsa-lib libx11 libxtst libxdo gtk3 libappindicator-gtk3
+    else
+        echo "❌ Unsupported package manager. Please install dependencies manually: build-essential, cmake, alsa-lib, x11, xtst, xdo, gtk3, appindicator3."
+        exit 1
+    fi
+}
+
+install_macos_deps() {
+    echo "🍎 Detected macOS. Checking for Homebrew dependencies..."
+    if ! command -v brew &> /dev/null; then
+        echo "❌ Homebrew not found. Please install Homebrew first."
+        exit 1
+    fi
+    brew install cmake ollama
+}
+
+# 1. Install Dependencies
+if [ "$OS_TYPE" == "Darwin" ]; then
+    install_macos_deps
+elif [ "$OS_TYPE" == "Linux" ]; then
+    install_linux_deps
+else
+    echo "❌ Unsupported OS: $OS_TYPE"
     exit 1
 fi
-echo "✓ Homebrew found"
 
 # 2. Check for Ollama
 if ! command -v ollama &> /dev/null; then
-    echo "⚠️  Ollama not found. Installing via Homebrew..."
-    brew install ollama
+    echo "⚠️  Ollama not found. Please install it from https://ollama.com"
 fi
-echo "✓ Ollama found"
 
 # 3. Check for Rust (Cargo)
 if ! command -v cargo &> /dev/null; then
@@ -40,53 +65,42 @@ if ! command -v cargo &> /dev/null; then
 fi
 echo "✓ Rust (cargo) found"
 
-# 4. Check for CMake (required for whisper.cpp building)
-if ! command -v cmake &> /dev/null; then
-    echo "⚠️  CMake not found. Installing via Homebrew..."
-    brew install cmake
-fi
-echo "✓ CMake found"
-
-# 5. Build the Rust Project
+# 4. Build the Rust Project
 echo ""
-echo "🦀 Building Voice Type Rust application (this may take a couple minutes)..."
+echo "🦀 Building Voice Type Rust application..."
 cd "$RUST_PROJ_DIR"
 cargo build --release
 echo "✓ Build successful"
 
-# 6. Create install directory and copy binary
+# 5. Create install directory and copy binary
 echo ""
 echo "📁 Installing to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
 cp "$RUST_PROJ_DIR/target/release/voice_type_rs" "$INSTALL_DIR/voice_type_rs"
 echo "✓ Successfully installed binary"
 
-# 7. Create LaunchAgent plist
-cat > "$PLIST_PATH" << EOF
+# 6. Setup Auto-start
+if [ "$OS_TYPE" == "Darwin" ]; then
+    PLIST_PATH="$HOME/Library/LaunchAgents/com.user.voice-type.plist"
+    cat > "$PLIST_PATH" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
     <string>com.user.voice-type</string>
-    
     <key>ProgramArguments</key>
     <array>
         <string>$INSTALL_DIR/voice_type_rs</string>
     </array>
-    
     <key>RunAtLoad</key>
     <true/>
-    
     <key>KeepAlive</key>
     <false/>
-    
     <key>StandardOutPath</key>
     <string>/tmp/voice-type.log</string>
-    
     <key>StandardErrorPath</key>
     <string>/tmp/voice-type.err</string>
-    
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
@@ -95,36 +109,43 @@ cat > "$PLIST_PATH" << EOF
 </dict>
 </plist>
 EOF
-echo "✓ Created LaunchAgent (auto-start on login)"
+    echo "🚀 Loading LaunchAgent..."
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+    launchctl load "$PLIST_PATH"
+    echo "✓ Setup macOS auto-start"
 
-# 8. Pull Ollama model
-echo ""
-echo "🧠 Pulling Ollama model for AI cleanup (qwen2.5-coder:7b)..."
-ollama pull qwen2.5-coder:7b || echo "⚠️  Could not pull model automatically. Please start Ollama first: ollama serve"
+elif [ "$OS_TYPE" == "Linux" ]; then
+    AUTOSTART_DIR="$HOME/.config/autostart"
+    mkdir -p "$AUTOSTART_DIR"
+    DESKTOP_FILE="$AUTOSTART_DIR/voice-type.desktop"
+    cat > "$DESKTOP_FILE" << EOF
+[Desktop Entry]
+Type=Application
+Name=Voice Type
+Comment=Local AI Voice-to-Text
+Exec=$INSTALL_DIR/voice_type_rs
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+    chmod +x "$DESKTOP_FILE"
+    echo "🚀 Starting Voice Type..."
+    nohup "$INSTALL_DIR/voice_type_rs" > /tmp/voice-type.log 2> /tmp/voice-type.err &
+    echo "✓ Setup Linux auto-start (.desktop file)"
+fi
 
-# 9. Load LaunchAgent
+# 7. Pull Ollama model
 echo ""
-echo "🚀 Starting Voice Type..."
-launchctl unload "$PLIST_PATH" 2>/dev/null || true
-launchctl load "$PLIST_PATH"
+echo "🧠 Pulling Ollama model (qwen2.5-coder:7b)..."
+ollama pull qwen2.5-coder:7b || echo "⚠️  Could not pull model automatically. Ensure Ollama is running."
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║                 Installation Complete!                    ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
-echo "📍 Installed to: $INSTALL_DIR"
-echo ""
 echo "🎤 HOW TO USE:"
-echo "   Hold RIGHT OPTION (⌥) to record your voice"
-echo "   Release to automatically type transcribed/cleaned text!"
-echo ""
-echo "📝 MEETING MEMO:"
-echo "   Click the 🎙️ menu bar icon and select 'Start Meeting Memo'."
-echo "   It will summarize your recording and save it to Documents/Memos."
-echo ""
-echo "⚠️  IMPORTANT: Because this is a native hotkey app, macOS needs permissions."
-echo "   Please grant Accessibility and Microphone to 'voice_type_rs' in System Settings."
+echo "   Hold RIGHT OPTION (macOS) or AltGr (Linux) to record voice."
+echo "   Release to type transcribed text!"
 echo ""
 echo "📋 Logs: tail -f /tmp/voice-type.log"
 echo ""
