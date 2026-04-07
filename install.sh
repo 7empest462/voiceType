@@ -48,7 +48,7 @@ check_linux_libs() {
     
     MISSING=0
     # Use ayatana-appindicator3-0.1 or appindicator3-0.1 as fallbacks
-    REQS=("x11" "xtst" "libxdo" "gtk+-3.0")
+    REQS=("x11" "xtst" "gtk+-3.0")
     
     # Check core X11/GTK first
     for req in "${REQS[@]}"; do
