@@ -37,14 +37,15 @@ You can use the provided `install.sh` script to handle dependencies and setup au
    - **Linux (X11)**: Ensure your user is part of the `input` group if using low-level hotkeys (e.g., `sudo usermod -aG input $USER`). Note that hotkeys work best on X11; Wayland support may require additional configuration.
 
 ### Configuration (Customizing Hotkeys)
-The first time you run Tempest Type, it will create a default configuration file at `~/.tempest-type/config.json`. You can edit this file to change your Push-to-Talk hotkey or the AI model used for cleanup.
+The first time you run Tempest Type, it will create a default configuration file. You can edit this file to change your Push-to-Talk hotkey or the AI model used for cleanup.
 
-Example `config.json`:
-```json
-{
-  "hotkey": "AltGr",
-  "model": "qwen2.5-coder:3b"
-}
+- **macOS**: `~/Library/Preferences/tempest-type/default-config.toml`
+- **Linux**: `~/.config/tempest-type/default-config.toml`
+
+Example `default-config.toml`:
+```toml
+hotkey = "AltGr"
+model = "qwen2.5:3b"
 ```
 
 Supported Hotkeys:
