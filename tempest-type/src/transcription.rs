@@ -51,7 +51,7 @@ impl Transcriber {
 
     async fn ensure_model_downloaded() -> anyhow::Result<PathBuf> {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        let model_dir = Path::new(&home).join(".voice-type").join("models");
+        let model_dir = Path::new(&home).join(".tempest-type").join("models");
         fs::create_dir_all(&model_dir)?;
         
         // ggml-small.en.bin

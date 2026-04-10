@@ -1,8 +1,8 @@
-# Voice Type (Cross-Platform Rust Native)
+# Tempest Type (Cross-Platform Rust Native)
 
-Voice Type is an ultra-fast, entirely local voice-to-text dictation app for macOS and Linux. It runs passively in your menu bar and allows you to instantly transcribe audio anywhere on your system using a global Push-to-Talk hotkey.
+Tempest Type is an ultra-fast, entirely local voice-to-text dictation app for macOS and Linux. It runs passively in your menu bar and allows you to instantly transcribe audio anywhere on your system using a global Push-to-Talk hotkey.
 
-This repository features the native Rust rewrite, offering **virtually zero CPU overhead** while idling, native Apple Silicon GPU acceleration (via coreML/Metal `whisper.cpp`) on macOS, and efficient local CPU/GPU transcription on Linux.
+This repository features a native Rust core, offering **virtually zero CPU overhead** while idling, native Apple Silicon GPU acceleration (via coreML/Metal `whisper.cpp`) on macOS, and efficient local CPU/GPU transcription on Linux.
 
 ## Features
 * 🎙️ **Push-to-Talk**: Hold down **Right Option (⌥)** on macOS or **AltGr** on Linux to record anywhere. Let go, and the text is automatically typed at your cursor.
@@ -23,8 +23,8 @@ You can use the provided `install.sh` script to handle dependencies and setup au
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/7empest462/VoiceType.git
-   cd VoiceType
+   git clone https://github.com/7empest462/TempestType.git
+   cd TempestType
    ```
 
 2. Run the installer:
@@ -33,11 +33,11 @@ You can use the provided `install.sh` script to handle dependencies and setup au
    ```
 
 3. **Permissions (Crucial Step)**:
-   - **macOS**: Grant **Accessibility**, **Input Monitoring**, and **Microphone** permissions to the binary (`~/.voice-type/voice_type_rs`) in System Settings.
+   - **macOS**: Grant **Accessibility**, **Input Monitoring**, and **Microphone** permissions to the binary (`~/.tempest-type/tempest-type`) in System Settings.
    - **Linux (X11)**: Ensure your user is part of the `input` group if using low-level hotkeys (e.g., `sudo usermod -aG input $USER`). Note that hotkeys work best on X11; Wayland support may require additional configuration.
 
 ### Configuration (Customizing Hotkeys)
-The first time you run Voice Type, it will create a default configuration file at `~/.voice-type/config.json`. You can edit this file to change your Push-to-Talk hotkey or the AI model used for cleanup.
+The first time you run Tempest Type, it will create a default configuration file at `~/.tempest-type/config.json`. You can edit this file to change your Push-to-Talk hotkey or the AI model used for cleanup.
 
 Example `config.json`:
 ```json
@@ -55,10 +55,10 @@ Supported Hotkeys:
 
 ### Manual Compilation:
 ```bash
-cd voice_type_rs
+cd tempest-type
 cargo build --release
 ```
-Then run the binary: `./target/release/voice_type_rs`.
+Then run the binary: `./target/release/tempest-type`.
 
 ---
 

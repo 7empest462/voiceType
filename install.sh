@@ -1,20 +1,27 @@
 #!/bin/bash
-# Voice Type Installer (Cross-platform Rust Native Version)
-# Installs Voice Type - a local voice-to-text app for macOS and Linux
+# Tempest Type Installer (Cross-platform Rust Native Version)
+# Installs Tempest Type - a local voice-to-text app for macOS and Linux
 # Requirements: macOS with Apple Silicon or Linux with GTK3/X11/ALSA
 
 set -e
 
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║           Voice Type Installer (Cross-platform)           ║"
+echo "║          Tempest Type Installer (Cross-platform)          ║"
 echo "║     Local AI Voice-to-Text with Push-to-Talk (Native)     ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo ""
 
 # Configuration
-INSTALL_DIR="$HOME/.voice-type"
+INSTALL_DIR="$HOME/.tempest-type"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-RUST_PROJ_DIR="$SCRIPT_DIR/voice_type_rs"
+RUST_PROJ_DIR="$SCRIPT_DIR/tempest-type"
+
+# Migration logic
+OLD_DIR="$HOME/.voice-type"
+if [ -d "$OLD_DIR" ] && [ ! -d "$INSTALL_DIR" ]; then
+    echo "🔄 Migrating configuration from $OLD_DIR to $INSTALL_DIR..."
+    mv "$OLD_DIR" "$INSTALL_DIR"
+fi
 
 OS_TYPE=$(uname -s)
 
@@ -113,7 +120,7 @@ fi
 
 # 4. Build the Rust Project
 echo ""
-echo "🦀 Building Voice Type Rust application..."
+echo "🦀 Building Tempest Type Rust application..."
 cd "$RUST_PROJ_DIR"
 cargo build --release
 echo "✓ Build successful"
@@ -122,31 +129,51 @@ echo "✓ Build successful"
 echo ""
 echo "📁 Installing to $INSTALL_DIR..."
 mkdir -p "$INSTALL_DIR"
-cp "$RUST_PROJ_DIR/target/release/voice_type_rs" "$INSTALL_DIR/voice_type_rs"
-echo "✓ Successfully installed binary"
+
+if [ "$OS_TYPE" == "Darwin" ]; then
+    echo "🏗️  Installing to $INSTALL_DIR (Raw Binary Mode)"
+    
+    # Cleanup old bundle if exists
+    rm -rf "/Applications/Tempest Type.app" 2>/dev/null || true
+    rm -rf "$INSTALL_DIR/Tempest Type.app" 2>/dev/null || true
+    
+    cp "$RUST_PROJ_DIR/target/release/tempest-type" "$INSTALL_DIR/tempest-type"
+    cp "$RUST_PROJ_DIR/icon.png" "$INSTALL_DIR/icon.png" 2>/dev/null || true
+    
+    # Critical for macOS Apple Silicon (prevent Killed: 9)
+    echo "🔐 Signing binary..."
+    xattr -rc "$INSTALL_DIR/tempest-type" 2>/dev/null || true
+    codesign --force -s - "$INSTALL_DIR/tempest-type" 2>/dev/null || true
+    
+    echo "✓ Installed and signed binary to $INSTALL_DIR/tempest-type"
+else
+    cp "$RUST_PROJ_DIR/target/release/tempest-type" "$INSTALL_DIR/tempest-type"
+    cp "$RUST_PROJ_DIR/icon.png" "$INSTALL_DIR/icon.png" 2>/dev/null || true
+    echo "✓ Successfully installed binary and assets"
+fi
 
 # 6. Setup Auto-start
 if [ "$OS_TYPE" == "Darwin" ]; then
-    PLIST_PATH="$HOME/Library/LaunchAgents/com.user.voice-type.plist"
+    PLIST_PATH="$HOME/Library/LaunchAgents/com.user.tempest-type.plist"
     cat > "$PLIST_PATH" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.user.voice-type</string>
+    <string>com.user.tempest-type</string>
     <key>ProgramArguments</key>
     <array>
-        <string>$INSTALL_DIR/voice_type_rs</string>
+        <string>$INSTALL_DIR/tempest-type</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <false/>
     <key>StandardOutPath</key>
-    <string>/tmp/voice-type.log</string>
+    <string>/tmp/tempest-type.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/voice-type.err</string>
+    <string>/tmp/tempest-type.err</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
@@ -156,30 +183,41 @@ if [ "$OS_TYPE" == "Darwin" ]; then
 </plist>
 EOF
     echo "🚀 Loading LaunchAgent..."
-    launchctl unload "$PLIST_PATH" 2>/dev/null || true
-    launchctl load "$PLIST_PATH"
-    echo "✓ Setup macOS auto-start"
+    echo "✓ Setup macOS auto-start (LaunchAgent created but not started)"
+    
+    # Create Desktop command for macOS
+    echo "💡 Creating Desktop Command script..."
+    CMD_FILE="$HOME/Desktop/Tempest Type.command"
+    cat > "$CMD_FILE" << EOF
+#!/bin/bash
+clear
+"$INSTALL_DIR/tempest-type"
+EOF
+    chmod +x "$CMD_FILE"
+    echo "✓ Created macOS desktop command script"
+    
+    # Cleanup old Alias if exists
+    rm "$HOME/Desktop/Tempest Type" 2>/dev/null || true
 
 elif [ "$OS_TYPE" == "Linux" ]; then
     AUTOSTART_DIR="$HOME/.config/autostart"
     mkdir -p "$AUTOSTART_DIR"
-    DESKTOP_FILE="$AUTOSTART_DIR/voice-type.desktop"
+    DESKTOP_FILE="$AUTOSTART_DIR/tempest-type.desktop"
     cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Type=Application
-Name=Voice Type
+Name=Tempest Type
 Comment=Local AI Voice-to-Text
-Exec=$INSTALL_DIR/voice_type_rs
+Exec=$INSTALL_DIR/tempest-type
+Icon=$INSTALL_DIR/icon.png
 Terminal=false
 X-GNOME-Autostart-enabled=true
 EOF
     chmod +x "$DESKTOP_FILE"
-    echo "🚀 Starting Voice Type..."
-    nohup "$INSTALL_DIR/voice_type_rs" > /tmp/voice-type.log 2> /tmp/voice-type.err &
-    echo "✓ Setup Linux auto-start (.desktop file)"
+    echo "✓ Setup Linux auto-start (.desktop file created but not started)"
 
     # Create Desktop shortcut for Linux
-    DESKTOP_HOME_FILE="$HOME/Desktop/voice-type.desktop"
+    DESKTOP_HOME_FILE="$HOME/Desktop/tempest-type.desktop"
     cp "$DESKTOP_FILE" "$DESKTOP_HOME_FILE"
     chmod +x "$DESKTOP_HOME_FILE"
     echo "✓ Created Linux desktop shortcut"
@@ -187,8 +225,8 @@ fi
 
 # 7. Pull Ollama model
 echo ""
-echo "🧠 Pulling Ollama model (qwen2.5-coder:3b)..."
-ollama pull qwen2.5-coder:3b || echo "⚠️  Could not pull model automatically. Ensure Ollama is running."
+echo "🧠 Pulling Ollama model (qwen2.5:3b)..."
+ollama pull qwen2.5:3b || echo "⚠️  Could not pull model automatically. Ensure Ollama is running."
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════╗"
@@ -199,5 +237,5 @@ echo "🎤 HOW TO USE:"
 echo "   Hold RIGHT OPTION (macOS) or AltGr (Linux) to record voice."
 echo "   Release to type transcribed text!"
 echo ""
-echo "📋 Logs: tail -f /tmp/voice-type.log"
+echo "📋 Logs: tail -f /tmp/tempest-type.log"
 echo ""

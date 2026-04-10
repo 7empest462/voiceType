@@ -39,7 +39,7 @@ impl AudioRecorder {
 
         // Ensure buffer is empty
         {
-            let mut buf = self.buffer.lock().unwrap();
+            let mut buf = self.buffer.lock().expect("Failed to lock audio buffer (mutex poisoned)");
             buf.clear();
         }
 
@@ -50,8 +50,9 @@ impl AudioRecorder {
                 device.build_input_stream(
                     &stream_config,
                     move |data: &[f32], _: &_| {
-                        let mut buf = buffer_clone.lock().unwrap();
-                        buf.extend_from_slice(data);
+                        if let Ok(mut buf) = buffer_clone.lock() {
+                            buf.extend_from_slice(data);
+                        }
                     },
                     |err| eprintln!("Audio stream error: {}", err),
                     None
@@ -61,9 +62,10 @@ impl AudioRecorder {
                 device.build_input_stream(
                     &stream_config,
                     move |data: &[i16], _: &_| {
-                        let mut buf = buffer_clone.lock().unwrap();
-                        for &sample in data {
-                            buf.push(sample.to_sample::<f32>());
+                        if let Ok(mut buf) = buffer_clone.lock() {
+                            for &sample in data {
+                                buf.push(sample.to_sample::<f32>());
+                            }
                         }
                     },
                     |err| eprintln!("Audio stream error: {}", err),
@@ -74,9 +76,10 @@ impl AudioRecorder {
                 device.build_input_stream(
                     &stream_config,
                     move |data: &[u16], _: &_| {
-                        let mut buf = buffer_clone.lock().unwrap();
-                        for &sample in data {
-                            buf.push(sample.to_sample::<f32>());
+                        if let Ok(mut buf) = buffer_clone.lock() {
+                            for &sample in data {
+                                buf.push(sample.to_sample::<f32>());
+                            }
                         }
                     },
                     |err| eprintln!("Audio stream error: {}", err),
@@ -94,7 +97,7 @@ impl AudioRecorder {
 
     pub fn stop_recording(&mut self) -> Vec<f32> {
         self.stream = None; 
-        let mut buf = self.buffer.lock().unwrap();
+        let mut buf = self.buffer.lock().expect("Failed to lock audio buffer for stopping");
         let raw_data = buf.clone();
         buf.clear();
         
