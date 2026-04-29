@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Robert Simens. All Rights Reserved.
+// Licensed under the Tempest Type Source-Available License.
+// See the LICENSE file in the repository root for full details.
+
 use ollama_rs::Ollama;
 use ollama_rs::generation::chat::{ChatMessage, request::ChatMessageRequest};
 use ollama_rs::models::ModelOptions;
