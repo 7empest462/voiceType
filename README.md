@@ -1,4 +1,4 @@
-# Tempest Type (Cross-Platform Rust Native)
+# Tempest Type (Cross-Platform Built With Rust)
 
 Tempest Type is an ultra-fast, entirely local voice-to-text dictation app for macOS and Linux. It runs passively in your menu bar and allows you to instantly transcribe audio anywhere on your system using a global Push-to-Talk hotkey.
 
