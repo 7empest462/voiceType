@@ -10,7 +10,7 @@ mod notification;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::io::Cursor;
-use rodio::{Decoder, Player, DeviceSinkBuilder, DeviceSink};
+use rodio::{Decoder, Player, DeviceSinkBuilder, MixerDeviceSink};
 
 use config::Config;
 
@@ -39,7 +39,7 @@ pub enum AppEvent {
 
 struct AudioEngine {
     player: Player,
-    _mixer: DeviceSink,
+    _mixer: MixerDeviceSink,
 }
 
 impl AudioEngine {
