@@ -183,7 +183,9 @@ if [ "$OS_TYPE" == "Darwin" ]; then
 </plist>
 EOF
     echo "🚀 Loading LaunchAgent..."
-    echo "✓ Setup macOS auto-start (LaunchAgent created but not started)"
+    launchctl unload "$PLIST_PATH" 2>/dev/null || true
+    launchctl load "$PLIST_PATH"
+    echo "✓ Setup macOS auto-start (LaunchAgent loaded)"
     
     # Create Desktop command for macOS
     echo "💡 Creating Desktop Command script..."
@@ -200,26 +202,27 @@ EOF
     rm "$HOME/Desktop/Tempest Type" 2>/dev/null || true
 
 elif [ "$OS_TYPE" == "Linux" ]; then
-    # Remove any old autostart entry (we don't want silent boot-start)
-    AUTOSTART_FILE="$HOME/.config/autostart/tempest-type.desktop"
-    if [ -f "$AUTOSTART_FILE" ]; then
-        rm "$AUTOSTART_FILE"
-        echo "🗑️  Removed old auto-start entry (no longer needed)"
-    fi
-
-    # Create Desktop shortcut that opens in a terminal window
-    DESKTOP_HOME_FILE="$HOME/Desktop/tempest-type.desktop"
-    cat > "$DESKTOP_HOME_FILE" << EOF
+    AUTOSTART_DIR="$HOME/.config/autostart"
+    mkdir -p "$AUTOSTART_DIR"
+    DESKTOP_FILE="$AUTOSTART_DIR/tempest-type.desktop"
+    cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Type=Application
 Name=Tempest Type
-Comment=Local AI Voice-to-Text — Close this window to stop
+Comment=Local AI Voice-to-Text
 Exec=$INSTALL_DIR/tempest-type
 Icon=$INSTALL_DIR/icon.png
-Terminal=true
+Terminal=false
+X-GNOME-Autostart-enabled=true
 EOF
+    chmod +x "$DESKTOP_FILE"
+    echo "✓ Setup Linux auto-start (.desktop file)"
+
+    # Create Desktop shortcut for Linux
+    DESKTOP_HOME_FILE="$HOME/Desktop/tempest-type.desktop"
+    cp "$DESKTOP_FILE" "$DESKTOP_HOME_FILE"
     chmod +x "$DESKTOP_HOME_FILE"
-    echo "✓ Created Linux desktop shortcut (opens in terminal window)"
+    echo "✓ Created Linux desktop shortcut"
 fi
 
 # 7. Pull Ollama model
