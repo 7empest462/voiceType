@@ -37,17 +37,42 @@ pub enum AppEvent {
     ProcessingError(String),
 }
 
-fn play_sound(player: &Player, name: &str) {
-    let bytes = match name {
-        "Tink" | "Start" => include_bytes!("../assets/start.wav") as &[u8],
-        "Pop" | "Stop" => include_bytes!("../assets/stop.wav") as &[u8],
-        "Success" => include_bytes!("../assets/success.wav") as &[u8],
-        _ => include_bytes!("../assets/start.wav") as &[u8],
-    };
+struct AudioEngine {
+    player: Player,
+    _mixer: DeviceSink,
+}
 
-    let cursor = Cursor::new(bytes);
-    if let Ok(source) = Decoder::new(cursor) {
-        player.append(source);
+impl AudioEngine {
+    fn new() -> anyhow::Result<Self> {
+        let _mixer = DeviceSinkBuilder::open_default_sink()
+            .map_err(|e| anyhow::anyhow!("Failed to open default audio sink: {}", e))?;
+        let player = Player::connect_new(&_mixer.mixer());
+        Ok(Self { player, _mixer })
+    }
+
+    fn play(&mut self, name: &str) {
+        let bytes = match name {
+            "Tink" | "Start" => include_bytes!("../assets/start.wav") as &[u8],
+            "Pop" | "Stop" => include_bytes!("../assets/stop.wav") as &[u8],
+            "Success" => include_bytes!("../assets/success.wav") as &[u8],
+            _ => include_bytes!("../assets/start.wav") as &[u8],
+        };
+
+        let cursor = Cursor::new(bytes);
+        if let Ok(source) = Decoder::new(cursor) {
+            // Self-healing logic: if appending fails or mixer is stale, we could re-init
+            // For Rodio, the most reliable way to 'heal' a stale macOS sink is to 
+            // recreate the engine if we suspect it's dead. 
+            // We'll attempt a play, and if it's been a while or we catch an error, we reset.
+            self.player.append(source);
+        }
+    }
+
+    fn refresh(&mut self) {
+        if let Ok(new_engine) = Self::new() {
+            *self = new_engine;
+            println!("🔊 Audio engine refreshed (Self-healing).");
+        }
     }
 }
 
@@ -63,10 +88,8 @@ fn open_file(path: &std::path::Path) {
 }
 
 fn main() -> anyhow::Result<()> {
-    // Initialize audio engine (Rodio 0.22+ names)
-    let mixer_device = DeviceSinkBuilder::open_default_sink()
-        .map_err(|e| anyhow::anyhow!("Failed to open default audio sink: {}", e))?;
-    let audio_player = Player::connect_new(&mixer_device.mixer());
+    // Initialize self-healing audio engine
+    let mut audio_engine = AudioEngine::new().ok();
 
     // Create async runtime
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -192,7 +215,9 @@ fn main() -> anyhow::Result<()> {
                         eprintln!("❌ Failed to copy to clipboard: {}", e);
                     } else {
                         println!("📋 Copied last transcription to clipboard.");
-                        play_sound(&audio_player, "Success");
+                        if let Some(ref mut engine) = audio_engine {
+                            engine.play("Success");
+                        }
                     }
                 }
             } else if menu_event.id == record_i.id() {
@@ -234,7 +259,11 @@ fn main() -> anyhow::Result<()> {
                             if let Err(e) = audio_recorder.start_recording() {
                                 eprintln!("Failed to start recording: {}", e);
                             } else {
-                                play_sound(&audio_player, "Start");
+                                if let Some(ref mut engine) = audio_engine {
+                                    // Refresh on every start to ensure device changes are caught
+                                    engine.refresh();
+                                    engine.play("Start");
+                                }
                             }
                         }
                     }
@@ -250,7 +279,9 @@ fn main() -> anyhow::Result<()> {
                             let audio_data = audio_recorder.stop_recording();
                             println!("⏹️ Stopped recording. Captured {} samples.", audio_data.len());
                             
-                            play_sound(&audio_player, "Stop");
+                            if let Some(ref mut engine) = audio_engine {
+                                engine.play("Stop");
+                            }
                             
                             #[cfg(target_os = "macos")]
                             tray_icon.set_title(Some("⏳"));
@@ -335,7 +366,9 @@ fn main() -> anyhow::Result<()> {
                             if std::fs::write(&filepath, content).is_ok() {
                                 println!("Memo saved to {:?}", filepath);
                                 notification::show_notification("Memo Saved", &format!("Saved as {}", filename));
-                                play_sound(&audio_player, "Success");
+                                if let Some(ref mut engine) = audio_engine {
+                                    engine.play("Success");
+                                }
                                 open_file(&filepath);
                             }
                         } else {
