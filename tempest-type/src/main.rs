@@ -10,7 +10,7 @@ mod notification;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::io::Cursor;
-use rodio::{Decoder, Player, DeviceSinkBuilder};
+use rodio::{Decoder, Player, DeviceSinkBuilder, DeviceSink};
 
 use config::Config;
 
